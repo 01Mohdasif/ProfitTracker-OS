@@ -11,7 +11,8 @@ import {
   LogOut, 
   CheckCircle2,
   Settings,
-  BookOpen
+  BookOpen,
+  TrendingUp
 } from 'lucide-react';
 import {
   Sidebar,
@@ -41,6 +42,7 @@ export function AppSidebar({ role, user }: { role: Role; user: User }) {
     { name: 'Projects', href: '/dashboard/projects', icon: Briefcase },
     { name: 'Employees', href: '/dashboard/employees', icon: Users },
     { name: 'Project Details', href: '/dashboard/projectdetails', icon: Users },
+    { name: 'Employee Value', href: '/dashboard/employee-value', icon: TrendingUp },
     { name: 'System Guide', href: '/dashboard/guide', icon: BookOpen },
   ];
 
