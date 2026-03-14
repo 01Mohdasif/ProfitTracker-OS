@@ -1,0 +1,84 @@
+# ProfitTracker | Technical Blueprint
+
+ProfitTracker is a specialized SaaS Financial OS built with **Next.js 15 (App Router)**, **Tailwind CSS**, and **Shadcn UI**. It manages multi-tenant business environments with a focus on project profitability and human capital efficiency.
+
+## 🚀 Tech Stack
+- **Framework**: Next.js 15 (App Router, Client-side heavy)
+- **Styling**: Tailwind CSS + Shadcn UI (Radix Primitives)
+- **State Management**: Persistence via `localStorage` (Centralized in `src/lib/store.ts`)
+- **Icons**: Lucide React
+- **Charts**: Recharts (Financial Visualizations)
+- **Date Handling**: date-fns
+
+---
+
+## 🏗 Architecture & Data Flow
+
+### 1. Global State & Persistence (`src/lib/store.ts`)
+The application uses a centralized `Store` object for all CRUD operations. 
+- **Storage Keys**: Uses prefixed keys in `localStorage` (`profitpulse_users`, `profitpulse_projects`, etc.).
+- **Synchronous Logic**: Data is updated in real-time. Navigation triggers a state refresh via `useEffect`.
+
+### 2. Role-Based Access Control (RBAC)
+Two primary roles defined in `src/lib/types.ts`:
+- **`TENANT` (Admin)**: Has full access to Analytics, Project Management, Employee Directory, and Financial Reporting.
+- **`EMPLOYEE`**: Restricted access. Can only see assigned tasks and project overviews.
+- **Auth Guard**: Managed in `src/app/dashboard/layout.tsx`. Redirects to `/auth/login` if no session is found.
+
+### 3. The Delivery Hierarchy & Relational Model
+Data is organized in a parent-child relationship: **Project -> Module -> Task**.
+
+#### Entities
+- **Project**: Top-level financial container.
+- **Module**: Structural component of a project.
+- **Task**: Granular unit of work within a module.
+
+### 4. Assignment Model & Historical Trace
+Assignments link employees to modules or tasks. This model handles many-to-many staff links and ensures data integrity during staff changes.
+
+**Key Logic**:
+- **Persistence**: When an employee is removed, the assignment record is updated with `unassignedAt` instead of being deleted.
+- **Historical Work**: The financial engine uses the `assignedAt` and `unassignedAt` (or `dueDate`) timestamps to calculate the exact burn cost contributed by an employee, even after they are removed from a project.
+
+---
+
+## 📂 Core Feature Map
+
+### Dashboard (Tenant View)
+- **Dynamic KPI Cards**: Real-time stats for Total Employees, Active Projects, Contract Value, and Est. Net Yield.
+- **Financial Health Report**: Compact, scrollable (X & Y axis) modal for deep-dives into project-level cost-benefit analysis (Revenue - Total Assigned Team Salaries).
+- **Revenue Mix Charts**: Visual representation of project distribution and profitability using Recharts.
+
+### Project Portfolio (`/dashboard/projects`)
+- **Hierarchy Management**: Manage Modules/Tasks via a split-view modal.
+- **Inline Team Assignments**: Assign/Remove team members directly from Modules or Tasks using an interactive Popover with User Badges.
+- **Financial Analysis**: Real-time "Burn Breakdown" per project based on employee daily rates and duration of assignment.
+
+### Employee Directory (`/dashboard/employees`)
+- **Real-time Search**: Filter team members by Name, Email, or Designation.
+- **Assignment Trace**: View exactly which modules and tasks an employee is currently contributing to.
+- **CRUD Operations**: Manage staff profiles, designations, and monthly salaries.
+
+### Project Details & Hierarchy View (`/dashboard/projectdetails`)
+- **Project Listing**: A dedicated module to browse all initialized projects, their revenue, and timelines.
+- **Visual Tree Structure**: Explore the complete hierarchy of any project in a modern top-to-bottom tree (Org-Chart) format.
+- **Node Mapping**: Automatically maps out Modules and their child Tasks, displaying statuses and assigned team members via overlapping avatars in a scrollable, responsive container.
+
+---
+
+## 📈 Financial Logic
+Profitability is calculated dynamically:
+- **Daily Rate**: `Employee Monthly Salary / 30`.
+- **Operational Cost**: Calculated per project by identifying all assignments (active or historical) and multiplying the `Days Assigned` by the `Daily Rate`.
+- **Net Yield**: `Project Revenue - Total Employee Salary Cost`.
+
+## 📱 Responsive Design
+- **Desktop**: High-density Data Tables and split-view modals.
+- **Mobile (< 768px)**: Optimized Card-based layouts with side-scrolling tables in reports and dedicated mobile dropdown menus for actions.
+
+---
+
+## 🔐 Authentication
+- **Loader States**: All Auth buttons include dynamic spinners and disabling logic during processing.
+- **Registration**: Tenant setup with live password match validation.
+- **Logout**: Accessible via both the Sidebar and the Top-right Profile Dropdown.
