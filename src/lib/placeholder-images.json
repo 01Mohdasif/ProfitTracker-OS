@@ -1,0 +1,16 @@
+{
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "Enterprise Dashboard",
+      "imageUrl": "https://picsum.photos/seed/123/1200/800",
+      "imageHint": "dashboard analytics"
+    },
+    {
+      "id": "2",
+      "description": "Team Collaboration",
+      "imageUrl": "https://picsum.photos/seed/456/1200/800",
+      "imageHint": "team office"
+    }
+  ]
+}
