@@ -1,4 +1,4 @@
-import { User, Project, Assignment } from '../../../lib/types';
+import { User, Project, Assignment, Module, Task } from '../../../lib/types';
 import { differenceInDays, parseISO } from 'date-fns';
 
 export interface EmployeeFinancialData {
@@ -7,6 +7,8 @@ export interface EmployeeFinancialData {
   designation: string;
   monthlySalary: number;
   projectsWorked: number;
+  modulesAssigned: number;
+  tasksAssigned: number;
   daysAssigned: number;
   totalCost: number;
   revenueContribution: number;
@@ -19,6 +21,8 @@ export function calculateEmployeeFinancialValues(
   employees: User[],
   projects: Project[],
   assignments: Assignment[],
+  modules: Module[],
+  tasks: Task[],
   tenantId: string
 ): EmployeeFinancialData[] {
   const tenantEmployees = employees.filter(e => e.tenantId === tenantId && e.role === 'EMPLOYEE');
@@ -27,15 +31,17 @@ export function calculateEmployeeFinancialValues(
   const projectIds = new Set(tenantProjects.map(p => p.id));
   const validAssignments = assignments.filter(a => projectIds.has(a.projectId));
 
-  // 1. Calculate revenue splits per project
-  const projectRevenueSplits: Record<string, number> = {};
+  // 1. Calculate revenue per unit per project (Modules + Tasks)
+  const projectRevenuePerUnit: Record<string, number> = {};
   tenantProjects.forEach(project => {
-    const projectAssignments = validAssignments.filter(a => a.projectId === project.id);
-    const uniqueEmployeeIds = new Set(projectAssignments.map(a => a.employeeId));
-    if (uniqueEmployeeIds.size > 0) {
-      projectRevenueSplits[project.id] = project.revenue / uniqueEmployeeIds.size;
+    const projectModules = modules.filter(m => m.projectId === project.id);
+    const projectTasks = tasks.filter(t => t.projectId === project.id);
+    const totalWorkUnits = projectModules.length + projectTasks.length;
+    
+    if (totalWorkUnits > 0) {
+      projectRevenuePerUnit[project.id] = project.revenue / totalWorkUnits;
     } else {
-      projectRevenueSplits[project.id] = 0;
+      projectRevenuePerUnit[project.id] = 0;
     }
   });
 
@@ -58,9 +64,29 @@ export function calculateEmployeeFinancialValues(
     const dailyRate = (employee.monthlySalary || 0) / 30;
     const employeeCost = dailyRate * daysAssigned;
 
+    // 3. Calculate accurate revenue contribution based on assigned Modules/Tasks
     let revenueContribution = 0;
+    const uniqueModules = new Set<string>();
+    const uniqueTasks = new Set<string>();
+
     uniqueProjectsWorked.forEach(pid => {
-      revenueContribution += (projectRevenueSplits[pid] || 0);
+      const empProjAssignments = employeeAssignments.filter(a => a.projectId === pid);
+      
+      const uniqueUnits = new Set<string>();
+      empProjAssignments.forEach(a => {
+        if (a.moduleId) {
+          uniqueUnits.add(`module_${a.moduleId}`);
+          uniqueModules.add(a.moduleId);
+        }
+        if (a.taskId) {
+          uniqueUnits.add(`task_${a.taskId}`);
+          uniqueTasks.add(a.taskId);
+        }
+      });
+
+      const numberOfAssignedUnits = uniqueUnits.size;
+      const revenuePerUnit = projectRevenuePerUnit[pid] || 0;
+      revenueContribution += (numberOfAssignedUnits * revenuePerUnit);
     });
 
     const netValue = revenueContribution - employeeCost;
@@ -82,6 +108,8 @@ export function calculateEmployeeFinancialValues(
       designation: employee.designation || 'Staff',
       monthlySalary: employee.monthlySalary || 0,
       projectsWorked: uniqueProjectsWorked.size,
+      modulesAssigned: uniqueModules.size,
+      tasksAssigned: uniqueTasks.size,
       daysAssigned,
       totalCost: employeeCost,
       revenueContribution,

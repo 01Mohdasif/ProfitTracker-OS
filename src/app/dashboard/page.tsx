@@ -63,6 +63,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import EmployeeValueDashboard from './employee-value/page';
 
 const CHART_COLORS = ['#67A6E4', '#2E2EB8', '#9B51E0', '#FF8B3E', '#27AE60'];
 
@@ -294,8 +295,10 @@ export default function DashboardHome() {
           </Card>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          <Card className="bg-card/40 border-white/5 shadow-xl">
+        {/* <div className="grid lg:grid-cols-2 gap-8"> */}
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+          <EmployeeValueDashboard/>
+          {/* <Card className="bg-card/40 border-white/5 shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-500" /> Top Revenue Drivers</CardTitle>
               <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-tighter">Attributed Value</Badge>
@@ -343,7 +346,7 @@ export default function DashboardHome() {
                 </div>
               ))}
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>

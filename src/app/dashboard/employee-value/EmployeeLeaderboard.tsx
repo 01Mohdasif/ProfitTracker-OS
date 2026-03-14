@@ -3,8 +3,16 @@
 import { EmployeeFinancialData } from "@/app/dashboard/employee-value/employeeValueEngine";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, ArrowUpCircle, ArrowDownCircle, MinusCircle } from "lucide-react";
+import { Trophy, ArrowUpCircle, ArrowDownCircle, MinusCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export function EmployeeLeaderboard({ data }: { data: EmployeeFinancialData[] }) {
   // Data is already sorted by ROI descending in the engine
@@ -20,7 +28,28 @@ export function EmployeeLeaderboard({ data }: { data: EmployeeFinancialData[] })
     <div className="border rounded-xl overflow-hidden bg-card shadow-sm mt-8">
       <div className="bg-muted/30 p-4 border-b flex items-center gap-2">
         <Trophy className="w-5 h-5 text-yellow-500" />
-        <h3 className="font-bold text-lg">Profitability Leaderboard</h3>
+        <h3 className="font-bold text-lg flex items-center gap-2">
+          Profitability Leaderboard
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="text-muted-foreground hover:text-primary transition-colors focus:outline-none">
+                <Info className="w-4 h-4" />
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Leaderboard Ranking Rules</DialogTitle>
+                <DialogDescription>How team members are categorized.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 text-sm mt-2">
+                <p>Employees are ranked purely based on their <strong>Return on Investment (ROI %)</strong>, from highest to lowest.</p>
+                <div className="flex items-center gap-2"><Badge className="bg-green-500"><ArrowUpCircle className="w-3 h-3 mr-1" /> Top Performer</Badge> <span>ROI is strictly greater than 100%</span></div>
+                <div className="flex items-center gap-2"><Badge variant="secondary" className="text-yellow-600 bg-yellow-500/10 border-yellow-500/20"><MinusCircle className="w-3 h-3 mr-1" /> Average</Badge> <span>ROI is between 0% and 100%</span></div>
+                <div className="flex items-center gap-2"><Badge variant="destructive"><ArrowDownCircle className="w-3 h-3 mr-1" /> Underperformer</Badge> <span>ROI is below 0% (Negative Value)</span></div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </h3>
       </div>
       <div className="overflow-x-auto">
         <Table className="min-w-[700px]">

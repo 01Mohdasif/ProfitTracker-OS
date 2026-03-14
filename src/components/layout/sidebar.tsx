@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   Settings,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  FolderKanban
 } from 'lucide-react';
 import {
   Sidebar,
@@ -38,11 +39,11 @@ export function AppSidebar({ role, user }: { role: Role; user: User }) {
   };
 
   const tenantLinks = [
-    { name: 'Analytics', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects', href: '/dashboard/projects', icon: Briefcase },
     { name: 'Employees', href: '/dashboard/employees', icon: Users },
-    { name: 'Project Details', href: '/dashboard/projectdetails', icon: Users },
-    { name: 'Employee Value', href: '/dashboard/employee-value', icon: TrendingUp },
+    { name: 'Project Details', href: '/dashboard/projectdetails', icon: FolderKanban  },
+    // { name: 'Employee Value', href: '/dashboard/employee-value', icon: TrendingUp },
     { name: 'System Guide', href: '/dashboard/guide', icon: BookOpen },
   ];
 

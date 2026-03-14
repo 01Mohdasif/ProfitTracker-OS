@@ -46,7 +46,7 @@ export function EmployeeValueTable({ data }: { data: EmployeeFinancialData[] }) 
     <div className="border rounded-xl overflow-x-auto bg-card shadow-sm">
       <Table className="min-w-[800px]">
         <TableHeader className="bg-muted/50">
-          <TableRow><SortableHead label="Employee" sortKey="name" /><SortableHead label="Designation" sortKey="designation" /><SortableHead label="Salary" sortKey="monthlySalary" /><SortableHead label="Projects" sortKey="projectsWorked" /><SortableHead label="Days Assigned" sortKey="daysAssigned" /><SortableHead label="Total Cost" sortKey="totalCost" /><SortableHead label="Revenue Contrib." sortKey="revenueContribution" /><SortableHead label="Net Value" sortKey="netValue" /><SortableHead label="ROI" sortKey="roi" className="text-right" /></TableRow>
+          <TableRow><SortableHead label="Employee" sortKey="name" /><SortableHead label="Designation" sortKey="designation" /><SortableHead label="Salary" sortKey="monthlySalary" /><SortableHead label="Projects" sortKey="projectsWorked" /><SortableHead label="Modules" sortKey="modulesAssigned" /><SortableHead label="Tasks" sortKey="tasksAssigned" /><SortableHead label="Days Assigned" sortKey="daysAssigned" /><SortableHead label="Total Cost" sortKey="totalCost" /><SortableHead label="Revenue Contrib." sortKey="revenueContribution" /><SortableHead label="Net Value" sortKey="netValue" /><SortableHead label="ROI" sortKey="roi" className="text-right" /></TableRow>
         </TableHeader>
         <TableBody>
           {sortedData.map((emp) => (
@@ -54,7 +54,10 @@ export function EmployeeValueTable({ data }: { data: EmployeeFinancialData[] }) 
               <TableCell className="font-semibold whitespace-nowrap">{emp.name}</TableCell>
               <TableCell className="text-muted-foreground text-sm whitespace-nowrap">{emp.designation}</TableCell>
               <TableCell className="font-mono">{formatCurrency(emp.monthlySalary)}</TableCell>
-              <TableCell>{emp.projectsWorked}</TableCell><TableCell>{emp.daysAssigned}</TableCell>
+              <TableCell>{emp.projectsWorked}</TableCell>
+              <TableCell>{emp.modulesAssigned}</TableCell>
+              <TableCell>{emp.tasksAssigned}</TableCell>
+              <TableCell>{emp.daysAssigned}</TableCell>
               <TableCell className="font-mono text-destructive">{formatCurrency(emp.totalCost)}</TableCell>
               <TableCell className="font-mono text-green-500">{formatCurrency(emp.revenueContribution)}</TableCell>
               <TableCell className={cn("font-mono font-bold", emp.netValue >= 0 ? "text-green-500" : "text-destructive")}>{formatCurrency(emp.netValue)}</TableCell>

@@ -8,7 +8,9 @@ import {
   Briefcase,
   Layout,
   CheckSquare,
-  TrendingUp
+  TrendingUp,
+  FolderKanban,
+  Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +67,24 @@ const steps = [
     color: "text-primary",
     bg: "bg-primary/10",
     borderColor: "border-primary/30 hover:border-primary",
+    role: "Admin",
+  },
+  {
+    title: "7. Visual Hierarchy (Project Details)",
+    description: "Access the Project Details dashboard to browse all initialized projects and explore their complete structural breakdown in an interactive, visual tree format. It maps nodes from Modules down to specific child Tasks.",
+    icon: FolderKanban,
+    color: "text-indigo-500",
+    bg: "bg-indigo-500/10",
+    borderColor: "border-indigo-500/30 hover:border-indigo-500",
+    role: "Admin",
+  },
+  {
+    title: "8. Employee Value & Leaderboard",
+    description: "Leverage the Employee Value Engine to track the exact monetary value each team member generates. The system dynamically calculates individual ROI and ranks employees on a visually color-coded profitability leaderboard.",
+    icon: Trophy,
+    color: "text-yellow-500",
+    bg: "bg-yellow-500/10",
+    borderColor: "border-yellow-500/30 hover:border-yellow-500",
     role: "Admin",
   }
 ];

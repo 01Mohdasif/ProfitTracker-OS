@@ -2,15 +2,23 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { Store } from '@/lib/store';
-import { User, Project, Assignment } from '@/lib/types';
+import { User, Project, Assignment, Module, Task } from '@/lib/types';
 import { calculateEmployeeFinancialValues } from '@/app/dashboard/employee-value/employeeValueEngine';
 import { EmployeeValueChart } from './EmployeeValueChart';
 import { EmployeeValueTable } from './EmployeeValueTable';
 import { EmployeeLeaderboard } from './EmployeeLeaderboard';
-import { Users, TrendingUp } from 'lucide-react';
+import { Users, TrendingUp, Info } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function EmployeeValueDashboard() {
-  const [data, setData] = useState<{ employees: User[], projects: Project[], assignments: Assignment[] }>({ employees: [], projects: [], assignments: [] });
+  const [data, setData] = useState<{ employees: User[], projects: Project[], assignments: Assignment[], modules: Module[], tasks: Task[] }>({ employees: [], projects: [], assignments: [], modules: [], tasks: [] });
   const [tenantId, setTenantId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,14 +28,16 @@ export default function EmployeeValueDashboard() {
       setData({
         employees: Store.getUsers(),
         projects: Store.getProjects(),
-        assignments: Store.getAssignments()
+        assignments: Store.getAssignments(),
+        modules: Store.getModules(),
+        tasks: Store.getTasks()
       });
     }
   }, []);
 
   const financialData = useMemo(() => {
     if (!tenantId) return [];
-    return calculateEmployeeFinancialValues(data.employees, data.projects, data.assignments, tenantId);
+    return calculateEmployeeFinancialValues(data.employees, data.projects, data.assignments, data.modules, data.tasks, tenantId);
   }, [data, tenantId]);
 
   if (!tenantId) return null;
@@ -44,7 +54,28 @@ export default function EmployeeValueDashboard() {
       <EmployeeValueChart data={financialData} />
       
       <div>
-         <h2 className="text-xl font-bold font-headline flex items-center gap-2 mb-4"><Users className="w-5 h-5 text-muted-foreground" /> Raw Value Data</h2>
+         <h2 className="text-xl font-bold font-headline flex items-center gap-2 mb-4">
+           <Users className="w-5 h-5 text-muted-foreground" /> Raw Value Data
+           <Dialog>
+             <DialogTrigger asChild>
+               <button className="text-muted-foreground hover:text-primary transition-colors focus:outline-none">
+                 <Info className="w-4 h-4" />
+               </button>
+             </DialogTrigger>
+             <DialogContent>
+               <DialogHeader>
+                 <DialogTitle>How are these values calculated?</DialogTitle>
+                 <DialogDescription>The core logic behind the Employee Value Engine.</DialogDescription>
+               </DialogHeader>
+               <div className="space-y-3 text-sm mt-2">
+                 <p><strong>Total Cost:</strong> <code>(Monthly Salary ÷ 30) × Days Assigned</code>.</p>
+                 <p><strong>Revenue Contribution:</strong> Each project's revenue is divided by its total Tasks and Modules to get a "Per Unit Value". An employee earns this unit value for every task/module they are assigned to.</p>
+                 <p><strong>Net Value:</strong> <code>Revenue Contribution - Total Cost</code>.</p>
+                 <p><strong>ROI %:</strong> <code>(Net Value ÷ Total Cost) × 100</code>.</p>
+               </div>
+             </DialogContent>
+           </Dialog>
+         </h2>
          <EmployeeValueTable data={financialData} />
       </div>
       <EmployeeLeaderboard data={financialData} />
