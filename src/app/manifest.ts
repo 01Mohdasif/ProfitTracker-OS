@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'ProfitTracker OS',
     short_name: 'ProfitTracker',
     description: 'Manage projects, employees, and financial health with ease.',
-    start_url: '/dashboard',
+    start_url: '/',
     display: 'standalone',
     background_color: '#0f172a',
     theme_color: '#2563eb',
