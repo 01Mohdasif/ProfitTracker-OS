@@ -68,7 +68,7 @@ export default function EmployeeValueDashboard() {
                  <DialogDescription>The core logic behind the Employee Value Engine.</DialogDescription>
                </DialogHeader>
                <div className="space-y-3 text-sm mt-2">
-                 <p><strong>Total Cost:</strong> <code>(Monthly Salary ÷ 30) × Days Assigned</code>.</p>
+                 <p><strong>Total Cost:</strong> <code>(Monthly Salary ÷ 30) × Days Assigned</code>. <em className="text-muted-foreground block mt-1">(Note: Days Assigned strictly counts Business Days, skipping weekends. It also accumulates days automatically if a task is paused and reopened.)</em></p>
                  <p><strong>Revenue Contribution:</strong> Each project's revenue is divided by its total Tasks and Modules to get a "Per Unit Value". An employee earns this unit value for every task/module they are assigned to.</p>
                  <p><strong>Net Value:</strong> <code>Revenue Contribution - Total Cost</code>.</p>
                  <p><strong>ROI %:</strong> <code>(Net Value ÷ Total Cost) × 100</code>.</p>

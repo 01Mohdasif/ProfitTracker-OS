@@ -23,7 +23,8 @@ import {
   Star,
   Printer,
   ChevronRight,
-  Target
+  Target,
+  Eye
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -76,6 +77,7 @@ export default function DashboardHome() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [selectedReportProject, setSelectedReportProject] = useState<string>("all");
+  const [chatTask, setChatTask] = useState<Task | null>(null);
   
   const [updateTask, setUpdateTask] = useState<{ task: Task, newStatus: Task['status'] } | null>(null);
   const [progressNote, setProgressNote] = useState("");
@@ -103,13 +105,45 @@ export default function DashboardHome() {
     if (!updateTask) return;
     const { task, newStatus } = updateTask;
     
+    let newHistory = [...((task as any).history || [])];
+    
+    // Ensure latest admin feedback is in history before we append our new note
+    if (task.feedback) {
+      const adminMsgs = newHistory.filter(m => m.role === 'admin');
+      const lastAdminMsg = adminMsgs[adminMsgs.length - 1];
+      if (!lastAdminMsg || lastAdminMsg.text !== task.feedback) {
+        newHistory.push({ role: 'admin', text: task.feedback, timestamp: new Date(Date.now() - 1000).toISOString() });
+      }
+    }
+
+    if (progressNote.trim()) {
+      newHistory.push({ role: 'employee', text: progressNote.trim(), timestamp: new Date().toISOString() });
+    }
+
     const updatedTask: Task = {
       ...task,
       status: newStatus,
-      employeeNote: progressNote
-    };
+      employeeNote: progressNote.trim() ? progressNote : task.employeeNote,
+      history: newHistory
+    } as Task;
 
     Store.saveTask(updatedTask);
+
+    // Engine Logic: Stop the clock (Lock Days Assigned) when Task is marked Completed
+    if (newStatus === 'Completed' && user) {
+      const assignments = Store.getAssignments();
+      // Find the active assignment for this task and employee
+      const activeAssignment = assignments.find(
+        a => a.taskId === task.id && a.employeeId === user.id && !a.unassignedAt
+      );
+      if (activeAssignment) {
+        activeAssignment.unassignedAt = new Date().toISOString();
+        const updatedAssignments = assignments.map(a => a.id === activeAssignment.id ? activeAssignment : a);
+        // Save back to local storage
+        localStorage.setItem('profitpulse_assignments', JSON.stringify(updatedAssignments));
+      }
+    }
+
     toast({ title: "Status Updated", description: `Task is now ${newStatus}.` });
     setUpdateTask(null);
     setProgressNote("");
@@ -189,6 +223,25 @@ export default function DashboardHome() {
       };
     }
   }, [selectedReportProject, projects, stats]);
+
+  // Helper to dynamically build chat display
+  const getDisplayHistory = (t: any) => {
+    let h = [...(t.history || [])];
+    // Fallback for older tasks without a history array
+    if (h.length === 0) {
+      if (t.feedback) h.push({ role: 'admin', text: t.feedback, timestamp: new Date(Date.now() - 10000).toISOString() });
+      if (t.employeeNote) h.push({ role: 'employee', text: t.employeeNote, timestamp: new Date().toISOString() });
+    } else {
+      if (t.feedback) {
+        const adminMsgs = h.filter(m => m.role === 'admin');
+        const lastAdminMsg = adminMsgs[adminMsgs.length - 1];
+        if (!lastAdminMsg || lastAdminMsg.text !== t.feedback) {
+           h.push({ role: 'admin', text: t.feedback, timestamp: new Date().toISOString() });
+        }
+      }
+    }
+    return h.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  };
 
   if (!user) return null;
 
@@ -540,29 +593,35 @@ export default function DashboardHome() {
                     <Badge className={cn("text-[10px] h-5", task.status === 'Completed' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500')}>{task.status}</Badge>
                   </div>
                   <div className="flex items-center gap-4">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Briefcase className="w-3 h-3" /> Project ID: {task.projectId}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1"><Briefcase className="w-3 h-3" /> Project: {projects.find(p => p.id === task.projectId)?.title || task.projectId}</p>
                     {task.dueDate && <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" /> Due: {new Date(task.dueDate).toLocaleDateString()}</p>}
                   </div>
-                  {task.feedback && (
-                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg mt-2">
-                      <p className="text-[10px] font-bold text-primary uppercase flex items-center gap-1"><MessageSquare className="w-3 h-3" /> Admin Feedback</p>
-                      <p className="text-xs italic mt-1">{task.feedback}</p>
-                    </div>
-                  )}
-                  {task.employeeNote && (
-                    <div className="p-2 bg-muted/40 rounded-lg mt-1 border border-border/50">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase">My Last Note</p>
-                      <p className="text-[11px] mt-0.5">{task.employeeNote}</p>
-                    </div>
-                  )}
+                  {(() => {
+                    const taskHistory = getDisplayHistory(task);
+                    const lastMsg = taskHistory.length > 0 ? taskHistory[taskHistory.length - 1] : null;
+                    if (!lastMsg) return null;
+                    return (
+                      <div className={cn("p-2.5 rounded-lg mt-2 border", lastMsg.role === 'admin' ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border/50")}>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className={cn("text-[10px] font-bold uppercase flex items-center gap-1", lastMsg.role === 'admin' ? "text-primary" : "text-muted-foreground")}>
+                            {lastMsg.role === 'admin' ? <><MessageSquare className="w-3 h-3" /> Admin Feedback</> : "My Last Note"}
+                          </p>
+                          <button className={cn("hover:underline text-[10px] flex items-center gap-1", lastMsg.role === 'admin' ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => setChatTask(task)}>
+                            <Eye className="w-3 h-3" /> {taskHistory.length > 1 ? `View Chat (${taskHistory.length})` : "View Chat"}
+                          </button>
+                        </div>
+                        <p className={cn("text-xs", lastMsg.role === 'admin' && "italic")}>{lastMsg.text}</p>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="gap-2 h-9">Update Status <MoreVertical className="w-3 h-3" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setUpdateTask({ task, newStatus: 'Working' })}>Working</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setUpdateTask({ task, newStatus: 'Completed' })}>Completed</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setUpdateTask({ task, newStatus: 'Blocked' })} className="text-destructive">Blocked</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTimeout(() => setUpdateTask({ task, newStatus: 'Working' }), 100)}>Working</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTimeout(() => setUpdateTask({ task, newStatus: 'Completed' }), 100)}>Completed</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTimeout(() => setUpdateTask({ task, newStatus: 'Blocked' }), 100)} className="text-destructive">Blocked</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -572,6 +631,45 @@ export default function DashboardHome() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!chatTask} onOpenChange={(open) => !open && setChatTask(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Chat History
+            </DialogTitle>
+            <DialogDescription>
+              {chatTask?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[400px] w-full pr-4 mt-4">
+            <div className="flex flex-col gap-4">
+              {chatTask && getDisplayHistory(chatTask).map((msg: any, i: number) => (
+                <div key={i} className={cn(
+                  "flex w-max max-w-[80%] flex-col gap-1 rounded-lg px-3 py-2 text-sm",
+                  msg.role === 'admin' 
+                    ? "bg-muted text-foreground self-start rounded-bl-none" 
+                    : "bg-primary text-primary-foreground self-end rounded-br-none"
+                )}>
+                  <span className="font-semibold text-[10px] opacity-70 uppercase tracking-wider">
+                    {msg.role === 'admin' ? 'Admin' : 'You'}
+                  </span>
+                  <span>{msg.text}</span>
+                  {msg.timestamp && (
+                    <span className="text-[9px] opacity-50 self-end mt-1">
+                      {new Date(msg.timestamp).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {chatTask && getDisplayHistory(chatTask).length === 0 && (
+                <p className="text-center text-muted-foreground italic text-sm mt-10">No chat history available.</p>
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!updateTask} onOpenChange={(open) => !open && setUpdateTask(null)}>
         <DialogContent className="max-w-md">

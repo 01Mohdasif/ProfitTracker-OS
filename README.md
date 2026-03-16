@@ -75,7 +75,7 @@ Assignments link employees to modules or tasks. This model handles many-to-many 
 ## 📈 Financial Logic
 Profitability is calculated dynamically:
 - **Daily Rate**: `Employee Monthly Salary / 30`.
-- **Operational Cost**: Calculated per project by identifying all assignments (active or historical) and multiplying the `Days Assigned` by the `Daily Rate`.
+- **Operational Cost**: Calculated per project by identifying all assignments (active or historical) and multiplying the `Days Assigned` (strictly Business Days, skipping weekends, and cumulative over task reopenings) by the `Daily Rate`.
 - **Net Yield**: `Project Revenue - Total Employee Salary Cost`.
 
 **Employee Value Calculations**:

@@ -41,7 +41,8 @@ import {
   History,
   Send,
   Users,
-  Trash2
+  Trash2,
+  Eye
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -180,11 +181,26 @@ export default function ProjectsManagement() {
       setProjects(Store.getProjects().filter(p => p.tenantId === auth.tenantId));
       setEmployees(Store.getUsers().filter(u => u.tenantId === auth.tenantId && u.role === 'EMPLOYEE'));
       setAssignments(Store.getAssignments());
+      
+      // Real-time Update: Agar chat modal open hai toh usko bhi background me naye data se update karo
+      setFeedbackTask(prev => {
+        if (prev) {
+          return Store.getTasks().find(t => t.id === prev.id) || prev;
+        }
+        return prev;
+      });
     }
   };
 
   useEffect(() => {
     loadData();
+    
+    // Cross-tab Synchronization: Employee waha message karega to yaha auto-refresh ho jayega
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.includes('profitpulse')) loadData();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const handleAddProject = (e: React.FormEvent) => {
@@ -246,11 +262,52 @@ export default function ProjectsManagement() {
 
   const handleSendFeedback = () => {
     if (!feedbackTask) return;
-    Store.saveTask({ ...feedbackTask, feedback: adminFeedback });
+    
+    let newHistory = [...((feedbackTask as any).history || [])];
+    
+    // Ensure latest employee note is in history before appending admin feedback
+    if (feedbackTask.employeeNote) {
+      const empMsgs = newHistory.filter(m => m.role === 'employee');
+      const lastEmpMsg = empMsgs[empMsgs.length - 1];
+      if (!lastEmpMsg || lastEmpMsg.text !== feedbackTask.employeeNote) {
+        newHistory.push({ role: 'employee', text: feedbackTask.employeeNote, timestamp: new Date(Date.now() - 1000).toISOString() });
+      }
+    }
+
+    if (adminFeedback.trim()) {
+      newHistory.push({ role: 'admin', text: adminFeedback.trim(), timestamp: new Date().toISOString() });
+    }
+
+    const updatedTask = { 
+      ...feedbackTask, 
+      feedback: adminFeedback.trim() ? adminFeedback : feedbackTask.feedback,
+      history: newHistory
+    } as Task;
+
+    Store.saveTask(updatedTask);
+    
     toast({ title: "Feedback Sent", description: "The employee will see your feedback in their portal." });
-    setFeedbackTask(null);
+    setFeedbackTask(updatedTask); // Keep modal open and instantly show the new message!
     setAdminFeedback("");
     loadData();
+  };
+
+  // Helper to dynamically build chat display
+  const getDisplayHistory = (t: any) => {
+    let h = [...(t.history || [])];
+    if (h.length === 0) {
+      if (t.feedback) h.push({ role: 'admin', text: t.feedback, timestamp: new Date(Date.now() - 10000).toISOString() });
+      if (t.employeeNote) h.push({ role: 'employee', text: t.employeeNote, timestamp: new Date().toISOString() });
+    } else {
+      if (t.employeeNote) {
+        const empMsgs = h.filter(m => m.role === 'employee');
+        const lastEmpMsg = empMsgs[empMsgs.length - 1];
+        if (!lastEmpMsg || lastEmpMsg.text !== t.employeeNote) {
+           h.push({ role: 'employee', text: t.employeeNote, timestamp: new Date().toISOString() });
+        }
+      }
+    }
+    return h.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   };
 
   const handleReopenTask = (task: Task) => {
@@ -639,6 +696,29 @@ export default function ProjectsManagement() {
                                 ))}
                                 {taskAssigned.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-2">No workers assigned</p>}
                               </div>
+                              {(() => {
+                                const taskHistory = getDisplayHistory(task);
+                                const lastMsg = taskHistory.length > 0 ? taskHistory[taskHistory.length - 1] : null;
+                                if (!lastMsg) return null;
+                                return (
+                                  <>
+                                    <Separator />
+                                    <div className="space-y-2">
+                                      <div className={cn("p-2.5 rounded-lg border", lastMsg.role === 'admin' ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border/50")}>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <p className={cn("text-[10px] font-bold uppercase flex items-center gap-1", lastMsg.role === 'admin' ? "text-primary" : "text-muted-foreground")}>
+                                            {lastMsg.role === 'admin' ? <><MessageSquare className="w-3 h-3" /> My Last Note</> : "Employee Note"}
+                                          </p>
+                                          <button className={cn("hover:underline text-[10px] flex items-center gap-1", lastMsg.role === 'admin' ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => setFeedbackTask(task!)}>
+                                            <Eye className="w-3 h-3" /> {taskHistory.length > 1 ? `View Chat (${taskHistory.length})` : "View Chat"}
+                                          </button>
+                                        </div>
+                                        <p className={cn("text-xs", lastMsg.role === 'admin' && "italic")}>{lastMsg.text}</p>
+                                      </div>
+                                    </div>
+                                  </>
+                                );
+                              })()}
                               <Separator />
                               <div className="space-y-2">
                                 <p className="text-xs font-bold">Actions</p>
@@ -648,7 +728,7 @@ export default function ProjectsManagement() {
                                   </Button>
                                 )}
                                 <Button variant="outline" size="sm" className="w-full" onClick={() => setFeedbackTask(task!)}>
-                                  <MessageSquare className="w-3 h-3 mr-2" /> View Progress & Feedback
+                                  <MessageSquare className="w-3 h-3 mr-2" /> {getDisplayHistory(task).length > 0 ? "Reply / View Chat" : "Provide Feedback"}
                                 </Button>
                               </div>
                             </>
@@ -830,9 +910,29 @@ export default function ProjectsManagement() {
                                 </div>
                               ))}
                             </div>
+                            {(() => {
+                              const taskHistory = getDisplayHistory(task);
+                              const lastMsg = taskHistory.length > 0 ? taskHistory[taskHistory.length - 1] : null;
+                              if (!lastMsg) return null;
+                              return (
+                                <div className="space-y-2">
+                                  <div className={cn("p-2.5 rounded-lg border", lastMsg.role === 'admin' ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border/50")}>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <p className={cn("text-[10px] font-bold uppercase flex items-center gap-1", lastMsg.role === 'admin' ? "text-primary" : "text-muted-foreground")}>
+                                        {lastMsg.role === 'admin' ? <><MessageSquare className="w-3 h-3" /> My Last Note</> : "Employee Note"}
+                                      </p>
+                                      <button className={cn("hover:underline text-[10px] flex items-center gap-1", lastMsg.role === 'admin' ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => setFeedbackTask(task!)}>
+                                        <Eye className="w-3 h-3" /> {taskHistory.length > 1 ? `View Chat (${taskHistory.length})` : "View Chat"}
+                                      </button>
+                                    </div>
+                                    <p className={cn("text-xs", lastMsg.role === 'admin' && "italic")}>{lastMsg.text}</p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                             <div className="space-y-2">
                               {task?.status === 'Completed' && <Button variant="outline" size="sm" className="w-full" onClick={() => handleReopenTask(task)}><History className="w-3 h-3 mr-2" />Re-open</Button>}
-                              <Button variant="outline" size="sm" className="w-full" onClick={() => setFeedbackTask(task!)}><MessageSquare className="w-3 h-3 mr-2" />Feedback</Button>
+                              <Button variant="outline" size="sm" className="w-full" onClick={() => setFeedbackTask(task!)}><MessageSquare className="w-3 h-3 mr-2" /> {getDisplayHistory(task).length > 0 ? "Reply" : "Feedback"}</Button>
                             </div>
                           </>
                         );
@@ -880,37 +980,54 @@ export default function ProjectsManagement() {
           setAdminFeedback("");
         }
       }}>
-        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
-          <DialogHeader className="p-6 border-b shrink-0">
-            <DialogTitle>Task Collaboration</DialogTitle>
-            <DialogDescription>Review progress updates and provide feedback to the employee.</DialogDescription>
+        <DialogContent className="max-w-xl w-[95vw] max-h-[90vh] flex flex-col p-0 overflow-hidden bg-card">
+          <DialogHeader className="p-4 md:p-6 border-b bg-muted/30 shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Task Collaboration
+            </DialogTitle>
+            <DialogDescription>{feedbackTask?.title}</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 p-6">
-            {feedbackTask && (
-              <div className="space-y-6 pt-2">
-                <div className="space-y-4">
-                  <div className="p-4 bg-muted/40 rounded-xl border border-border">
-                    <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Employee's Progress Description</p>
-                    <p className="text-sm italic">{feedbackTask.employeeNote || "No progress note provided yet."}</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold flex items-center gap-2"><Send className="w-3 h-3" /> My Feedback</Label>
-                    <Textarea 
-                      placeholder="Provide guidance or requests for this task..."
-                      value={adminFeedback}
-                      onChange={(e) => setAdminFeedback(e.target.value)}
-                      className="min-h-[120px]"
-                    />
-                  </div>
+          <ScrollArea className="flex-1 p-4 md:p-6">
+            <div className="flex flex-col gap-4">
+              {feedbackTask && getDisplayHistory(feedbackTask).map((msg: any, i: number) => (
+                <div key={i} className={cn(
+                  "flex w-max max-w-[80%] flex-col gap-1 rounded-lg px-3 py-2 text-sm",
+                  msg.role === 'employee' 
+                    ? "bg-muted text-foreground self-start rounded-bl-none" 
+                    : "bg-primary text-primary-foreground self-end rounded-br-none"
+                )}>
+                  <span className="font-semibold text-[10px] opacity-70 uppercase tracking-wider">
+                    {msg.role === 'employee' ? 'Employee' : 'You'}
+                  </span>
+                  <span>{msg.text}</span>
+                  {msg.timestamp && (
+                    <span className="text-[9px] opacity-50 self-end mt-1">
+                      {new Date(msg.timestamp).toLocaleString()}
+                    </span>
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
+              {feedbackTask && getDisplayHistory(feedbackTask).length === 0 && (
+                <p className="text-center text-muted-foreground italic text-sm mt-4">No chat history available.</p>
+              )}
+            </div>
           </ScrollArea>
-          <DialogFooter className="p-6 border-t shrink-0">
-            <Button variant="outline" onClick={() => setFeedbackTask(null)}>Close</Button>
-            <Button onClick={handleSendFeedback} disabled={!adminFeedback.trim()}>Send Feedback</Button>
-          </DialogFooter>
+          <div className="p-4 md:p-6 border-t bg-background shrink-0 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-muted-foreground uppercase">New Message</Label>
+              <Textarea 
+                placeholder="Type your feedback or instructions here..."
+                value={adminFeedback}
+                onChange={(e) => setAdminFeedback(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setFeedbackTask(null)}>Close</Button>
+              <Button onClick={handleSendFeedback} disabled={!adminFeedback.trim()} className="gap-2"><Send className="w-4 h-4"/> Send</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

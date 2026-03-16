@@ -1,5 +1,5 @@
 import { User, Project, Assignment, Module, Task } from '../../../lib/types';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInBusinessDays, parseISO, startOfDay } from 'date-fns';
 
 export interface EmployeeFinancialData {
   id: string;
@@ -55,9 +55,12 @@ export function calculateEmployeeFinancialValues(
     let daysAssigned = 0;
 
     employeeAssignments.forEach(a => {
-      const startDate = parseISO(a.assignedAt);
-      const endDate = a.unassignedAt ? parseISO(a.unassignedAt) : currentDate;
-      const days = Math.max(1, differenceInDays(endDate, startDate));
+      const startDate = startOfDay(parseISO(a.assignedAt));
+      const endDate = a.unassignedAt ? startOfDay(parseISO(a.unassignedAt)) : startOfDay(currentDate);
+      
+      // Use differenceInBusinessDays to skip Saturday & Sunday. 
+      // Add +1 to make it inclusive (e.g., Wed to Fri = 3 days).
+      const days = Math.max(1, differenceInBusinessDays(endDate, startDate) + 1);
       daysAssigned += days;
     });
 
